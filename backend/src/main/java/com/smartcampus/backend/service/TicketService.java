@@ -10,21 +10,21 @@ import com.smartcampus.backend.model.NotificationType;
 import com.smartcampus.backend.model.User;
 import com.smartcampus.backend.model.Role;
 import com.smartcampus.backend.repository.TicketRepository;
-import com.smartcampus.backend.repository.UserRepository;
 import com.smartcampus.backend.services.NotificationService;
 import com.smartcampus.backend.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.Optional;
-import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 import com.smartcampus.backend.dto.TicketStatsResponse;
 
@@ -36,7 +36,6 @@ public class TicketService {
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
     private final UserService userService;
-    private final UserRepository userRepository;
 
     // Helper: get current username safely (defaults to 'anonymous' when security is open)
     private String getCurrentUser() {
@@ -67,7 +66,7 @@ public class TicketService {
 
             Ticket savedTicket = ticketRepository.save(ticket);
 
-            List<User> admins = userRepository.findByRole(Role.ADMIN);
+            List<User> admins = userService.getUsersByRole(Role.ADMIN);
             for (User admin : admins) {
                 notificationService.createNotification(
                     admin.getId(),
@@ -160,22 +159,20 @@ public class TicketService {
         if (request.getStatus() != null) {
             ticket.setStatus(request.getStatus());
         }
-        
-        if (request.getAssignedTechnician() != null) {
-            ticket.setAssignedTechnician(request.getAssignedTechnician());
-        }
 
         String requestedTechnicianId = request.getAssignedTechnicianId();
         if (requestedTechnicianId == null && request.getAssignedTechnician() != null) {
             String technicianKey = request.getAssignedTechnician().trim();
             if (!technicianKey.isEmpty()) {
-                Optional<User> resolvedUser = technicianKey.contains("@")
-                        ? userService.findByEmail(technicianKey)
-                        : userRepository.findByNameIgnoreCase(technicianKey);
-                if (resolvedUser.isPresent()) {
-                    requestedTechnicianId = resolvedUser.get().getId();
-                }
+                User resolvedTechnician = userService.findTechnicianByKey(technicianKey)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "No technician found for '" + technicianKey + "'."));
+                requestedTechnicianId = resolvedTechnician.getId();
+                ticket.setAssignedTechnician(resolvedTechnician.getName());
             }
+        } else if (request.getAssignedTechnician() != null) {
+            // ID was provided directly; accept the display name from the request as-is
+            ticket.setAssignedTechnician(request.getAssignedTechnician());
         }
 
         if (requestedTechnicianId != null && !requestedTechnicianId.equals(ticket.getAssignedTechnicianId())) {
