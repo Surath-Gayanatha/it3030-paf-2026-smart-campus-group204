@@ -64,20 +64,20 @@ public class TicketService {
                 .status(TicketStatus.OPEN)
                 .build();
 
-            Ticket savedTicket = ticketRepository.save(ticket);
+        Ticket savedTicket = ticketRepository.save(ticket);
 
-            List<User> admins = userService.getUsersByRole(Role.ADMIN);
-            for (User admin : admins) {
-                notificationService.createNotification(
+        List<User> admins = userService.getUsersByRole(Role.ADMIN);
+        for (User admin : admins) {
+            notificationService.createNotification(
                     admin.getId(),
                     "New Ticket Created",
                     "A new support ticket has been submitted: Ticket #" + savedTicket.getId().substring(Math.max(0, savedTicket.getId().length() - 5)),
                     NotificationType.NEW_TICKET_CREATED,
                     savedTicket.getId()
-                );
-            }
+            );
+        }
 
-            return mapToResponse(savedTicket);
+        return mapToResponse(savedTicket);
     }
 
     // ── READ ──────────────────────────────────────────────────────────────────
