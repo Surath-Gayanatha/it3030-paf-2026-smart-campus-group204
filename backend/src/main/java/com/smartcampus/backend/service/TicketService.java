@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Optional;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 import com.smartcampus.backend.dto.TicketStatsResponse;
@@ -163,13 +164,26 @@ public class TicketService {
         if (request.getAssignedTechnician() != null) {
             ticket.setAssignedTechnician(request.getAssignedTechnician());
         }
-        
-        if (request.getAssignedTechnicianId() != null && !request.getAssignedTechnicianId().equals(ticket.getAssignedTechnicianId())) {
-            ticket.setAssignedTechnicianId(request.getAssignedTechnicianId());
-            
+
+        String requestedTechnicianId = request.getAssignedTechnicianId();
+        if (requestedTechnicianId == null && request.getAssignedTechnician() != null) {
+            String technicianKey = request.getAssignedTechnician().trim();
+            if (!technicianKey.isEmpty()) {
+                Optional<User> resolvedUser = technicianKey.contains("@")
+                        ? userService.findByEmail(technicianKey)
+                        : userRepository.findByNameIgnoreCase(technicianKey);
+                if (resolvedUser.isPresent()) {
+                    requestedTechnicianId = resolvedUser.get().getId();
+                }
+            }
+        }
+
+        if (requestedTechnicianId != null && !requestedTechnicianId.equals(ticket.getAssignedTechnicianId())) {
+            ticket.setAssignedTechnicianId(requestedTechnicianId);
+
             // Trigger Notification
             notificationService.createNotification(
-                    request.getAssignedTechnicianId(),
+                    requestedTechnicianId,
                     "Ticket Assigned",
                     "You have been assigned to handle maintenance ticket #" + ticket.getId().substring(Math.max(0, ticket.getId().length() - 5)),
                     NotificationType.TICKET_STATUS_CHANGED,

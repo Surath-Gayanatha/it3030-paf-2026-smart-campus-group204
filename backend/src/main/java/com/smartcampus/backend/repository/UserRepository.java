@@ -14,6 +14,8 @@ public interface UserRepository extends MongoRepository<User, String> {
     // Find user by email - used during OAuth2 login
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByNameIgnoreCase(String name);
+
     List<User> findByRole(Role role);
 
     // Check if user exists by email - used before creating new user
