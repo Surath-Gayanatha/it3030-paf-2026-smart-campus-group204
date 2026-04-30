@@ -289,7 +289,7 @@ const AssignModal = ({ ticket, technicians, onClose, onAssigned }) => {
     <Overlay onClose={onClose}>
       <h3 style={{ color:TOKEN.textPri, fontSize:'1.2rem', fontWeight:800, margin:'0 0 4px' }}>Assign Technician</h3>
       <p style={{ color:TOKEN.textSec, fontSize:'0.87rem', margin:'0 0 24px' }}>
-        Ticket <span style={{ color:'#818CF8', fontWeight:700 }}>#{ticket.id.slice(-5)}</span> · {ticket.category?.replace('_',' ')}
+        Ticket <span style={{ color:'#818CF8', fontWeight:700 }}>#{ticket.id.slice(-5)}</span> · {ticket.category?.replace(/_/g,' ')}
       </p>
 
       <p style={{ color:TOKEN.textMut, fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.1em', margin:'0 0 10px', textTransform:'uppercase' }}>
@@ -320,7 +320,7 @@ const AssignModal = ({ ticket, technicians, onClose, onAssigned }) => {
                   {t.name}
                   {isSpecialist && <span style={{ background:'rgba(16,185,129,0.1)', color:'#10B981', fontSize:'0.65rem', fontWeight:800, padding:'2px 8px', borderRadius:'4px', letterSpacing:'0.05em' }}>EXPERT MATCH</span>}
                 </div>
-                {isSpecialist && <p style={{ margin:0, fontSize:'0.7rem', color:'#10B981', fontWeight:500 }}>Specializes in {t.techCategory.replace('_',' ')}</p>}
+                {isSpecialist && <p style={{ margin:0, fontSize:'0.7rem', color:'#10B981', fontWeight:500 }}>Specializes in {t.techCategory.replace(/_/g,' ')}</p>}
               </div>
               {active && <span style={{ marginLeft:'auto', background:'rgba(37,99,235,0.1)', border:'1px solid rgba(37,99,235,0.3)', borderRadius:'6px', color:'#2563EB', fontSize:'0.7rem', fontWeight:700, padding:'2px 8px' }}>Selected</span>}
             </button>
@@ -770,7 +770,7 @@ const AdminView = () => {
                     background:'rgba(0,0,0,0.06)', borderRadius:'7px', color:TOKEN.textSec,
                     fontSize:'0.75rem', fontWeight:600, padding:'4px 9px', whiteSpace:'nowrap',
                   }}>
-                    {ticket.category?.replace('_',' ') || '—'}
+                    {ticket.category?.replace(/_/g,' ') || '—'}
                   </span>
                 </div>
 
