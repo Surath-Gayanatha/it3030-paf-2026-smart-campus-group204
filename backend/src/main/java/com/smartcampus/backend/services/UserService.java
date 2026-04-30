@@ -35,6 +35,32 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    // Resolve a technician by email or display name.
+    // Throws ResponseStatusException (400) if the matched user is not a TECHNICIAN,
+    // or if the name lookup is ambiguous (multiple matches).
+    // Returns an empty Optional when no user matches the key; callers are responsible
+    // for deciding whether that constitutes an error.
+    public Optional<User> findTechnicianByKey(String key) {
+        Optional<User> found;
+        if (key.contains("@")) {
+            found = userRepository.findByEmail(key);
+        } else {
+            List<User> matches = userRepository.findByNameIgnoreCase(key);
+            if (matches.size() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Multiple users match the name '" + key + "'. Use the technician's email to assign.");
+            }
+            found = matches.isEmpty() ? Optional.empty() : Optional.of(matches.get(0));
+        }
+        found.ifPresent(user -> {
+            if (user.getRole() != Role.TECHNICIAN) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "User '" + key + "' does not have the TECHNICIAN role.");
+            }
+        });
+        return found;
+    }
+
     // Get all users - admin only
     public List<User> getAllUsers() {
         return userRepository.findAll();

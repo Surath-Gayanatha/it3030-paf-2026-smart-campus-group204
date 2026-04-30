@@ -10,20 +10,21 @@ import com.smartcampus.backend.model.NotificationType;
 import com.smartcampus.backend.model.User;
 import com.smartcampus.backend.model.Role;
 import com.smartcampus.backend.repository.TicketRepository;
-import com.smartcampus.backend.repository.UserRepository;
 import com.smartcampus.backend.services.NotificationService;
 import com.smartcampus.backend.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 import com.smartcampus.backend.dto.TicketStatsResponse;
 
@@ -35,7 +36,6 @@ public class TicketService {
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
     private final UserService userService;
-    private final UserRepository userRepository;
 
     // Helper: get current username safely (defaults to 'anonymous' when security is open)
     private String getCurrentUser() {
@@ -66,7 +66,7 @@ public class TicketService {
 
             Ticket savedTicket = ticketRepository.save(ticket);
 
-            List<User> admins = userRepository.findByRole(Role.ADMIN);
+            List<User> admins = userService.getUsersByRole(Role.ADMIN);
             for (User admin : admins) {
                 notificationService.createNotification(
                     admin.getId(),
@@ -159,17 +159,33 @@ public class TicketService {
         if (request.getStatus() != null) {
             ticket.setStatus(request.getStatus());
         }
-        
-        if (request.getAssignedTechnician() != null) {
-            ticket.setAssignedTechnician(request.getAssignedTechnician());
+
+        String requestedTechnicianId = request.getAssignedTechnicianId();
+        if (requestedTechnicianId == null && request.getAssignedTechnician() != null) {
+            String technicianKey = request.getAssignedTechnician().trim();
+            if (!technicianKey.isEmpty()) {
+                User resolvedTechnician = userService.findTechnicianByKey(technicianKey)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "No technician found for '" + technicianKey + "'."));
+                requestedTechnicianId = resolvedTechnician.getId();
+                ticket.setAssignedTechnician(resolvedTechnician.getName());
+            }
+        } else if (requestedTechnicianId != null) {
+            // ID provided directly; validate role and use canonical name from DB
+            User tech = userService.findById(requestedTechnicianId);
+            if (tech.getRole() != Role.TECHNICIAN) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "User with ID '" + requestedTechnicianId + "' does not have the TECHNICIAN role.");
+            }
+            ticket.setAssignedTechnician(tech.getName());
         }
-        
-        if (request.getAssignedTechnicianId() != null && !request.getAssignedTechnicianId().equals(ticket.getAssignedTechnicianId())) {
-            ticket.setAssignedTechnicianId(request.getAssignedTechnicianId());
-            
+
+        if (requestedTechnicianId != null && !requestedTechnicianId.equals(ticket.getAssignedTechnicianId())) {
+            ticket.setAssignedTechnicianId(requestedTechnicianId);
+
             // Trigger Notification
             notificationService.createNotification(
-                    request.getAssignedTechnicianId(),
+                    requestedTechnicianId,
                     "Ticket Assigned",
                     "You have been assigned to handle maintenance ticket #" + ticket.getId().substring(Math.max(0, ticket.getId().length() - 5)),
                     NotificationType.TICKET_ASSIGNED,
