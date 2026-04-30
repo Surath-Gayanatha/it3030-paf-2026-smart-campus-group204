@@ -170,9 +170,14 @@ public class TicketService {
                 requestedTechnicianId = resolvedTechnician.getId();
                 ticket.setAssignedTechnician(resolvedTechnician.getName());
             }
-        } else if (request.getAssignedTechnician() != null) {
-            // ID was provided directly; accept the display name from the request as-is
-            ticket.setAssignedTechnician(request.getAssignedTechnician());
+        } else if (requestedTechnicianId != null) {
+            // ID provided directly; validate role and use canonical name from DB
+            User tech = userService.findById(requestedTechnicianId);
+            if (tech.getRole() != Role.TECHNICIAN) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "User with ID '" + requestedTechnicianId + "' does not have the TECHNICIAN role.");
+            }
+            ticket.setAssignedTechnician(tech.getName());
         }
 
         if (requestedTechnicianId != null && !requestedTechnicianId.equals(ticket.getAssignedTechnicianId())) {

@@ -36,8 +36,10 @@ public class UserService {
     }
 
     // Resolve a technician by email or display name.
-    // Throws ResponseStatusException (400) if the matched user is not a TECHNICIAN or if the
-    // name lookup is ambiguous (multiple matches). Returns empty if no user is found.
+    // Throws ResponseStatusException (400) if the matched user is not a TECHNICIAN,
+    // or if the name lookup is ambiguous (multiple matches).
+    // Returns an empty Optional when no user matches the key; callers are responsible
+    // for deciding whether that constitutes an error.
     public Optional<User> findTechnicianByKey(String key) {
         Optional<User> found;
         if (key.contains("@")) {
